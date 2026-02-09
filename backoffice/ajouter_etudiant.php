@@ -1,9 +1,15 @@
 <?php
-require_once '../bdd/service_bdd.php';
-connexionbdd();
+session_start();
 
-if (isset($_POST['nom']) && isset($_POST['prenom']) && isset($_POST['classe']))
-{
+// Protection de la page : si pas connecté, retour au login
+if (!isset($_SESSION['admin_logged'])) {
+    header('Location: login.php');
+    exit;
+}
+
+require_once '../bdd/service_bdd.php';
+
+if (isset($_POST['nom']) && isset($_POST['prenom'])) {
     $nom = $_POST['nom'];
     $prenom = $_POST['prenom'];
     $classe = $_POST['classe'];
@@ -11,45 +17,30 @@ if (isset($_POST['nom']) && isset($_POST['prenom']) && isset($_POST['classe']))
     $passions = $_POST['passions'];
     $projet = $_POST['projet'];
     
-    // --- GESTION DE LA PHOTO ---
-    $nom_photo = "default.jpg"; // Nom par défaut
-
+    // Gestion de l'upload photo
+    $nom_photo = "default.jpg";
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] == 0) {
-        $dossier_destination = '../frontoffice/images/';
+        $dossier = '../frontoffice/images/';
+        if (!is_dir($dossier)) mkdir($dossier, 0777, true);
         
-        // Créer le dossier s'il n'existe pas
-        if (!is_dir($dossier_destination)) {
-            mkdir($dossier_destination, 0777, true);
-        }
-
         $extension = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
-        $nom_photo = uniqid() . "." . $extension; // Génère un nom unique (ex: 65b12...jpg)
-        
-        move_uploaded_file($_FILES['photo']['tmp_name'], $dossier_destination . $nom_photo);
+        $nom_photo = uniqid() . "." . $extension;
+        move_uploaded_file($_FILES['photo']['tmp_name'], $dossier . $nom_photo);
     }
-    // ---------------------------
 
     try {
         $db = connexionbdd();
-        $sql = "INSERT INTO etudiant (nom, prenom, photo, classe, description, passions, projet)
-                VALUES (:nom, :prenom, :photo, :classe, :description, :passions, :projet)";
-        $requete = $db->prepare($sql);
-        $requete->execute([
-            ':nom' => $nom,
-            ':prenom' => $prenom,
-            ':photo' => $nom_photo, // On insère le nom du fichier
-            ':classe' => $classe,
-            ':description' => $description,
-            ':passions' => $passions,
-            ':projet' => $projet,
+        $sql = "INSERT INTO etudiant (nom, prenom, photo, classe, description, passions, projet) 
+                VALUES (:n, :p, :img, :c, :d, :pass, :proj)";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([
+            'n' => $nom, 'p' => $prenom, 'img' => $nom_photo, 
+            'c' => $classe, 'd' => $description, 'pass' => $passions, 'proj' => $projet
         ]);
-        echo "<p style='color:green;'>L'etudiant $prenom $nom a été ajouté avec succès !</p>";
-    } catch (PDOException $e){
-        echo "<p style='color:red;'>Erreur SQL : " . $e->getMessage() . "</p>";
-    }
+        $success = "L'étudiant $prenom a été ajouté !";
+    } catch (Exception $e) { $error = $e->getMessage(); }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -59,33 +50,43 @@ if (isset($_POST['nom']) && isset($_POST['prenom']) && isset($_POST['classe']))
 </head>
 <body>
     <div class="wrap">
+        <div style="text-align:right; margin-bottom:10px;">
+            <a href="logout.php" style="color:var(--g1); text-decoration:none;">Déconnexion</a>
+        </div>
         <div class="hero">
-            <section>
-                <H2>Ajouter un nouveau etudiant</H2>
-                <h6>Veuillez entrer ses informations ci-dessous</h6>
-            </section>
-            <div class="grid">
-                <section>
-                    <form action="" method="POST" enctype="multipart/form-data">
+            <div class="glow"></div>
+            <div class="hero-inner" style="display:block;">
+                <h1>Nouveau Profil</h1>
+                <?php if(isset($success)) echo "<p style='color:var(--g1)'>$success</p>"; ?>
+
+                <form method="POST" enctype="multipart/form-data">
+                    <div>
                         <label>Nom</label>
                         <input type="text" name="nom" required>
-                        <label>Prenom</label>
-                        <input type="text" name="prenom" required><br><br>
-                        
+                        <label>Prénom</label>
+                        <input type="text" name="prenom" required>
+                    </div><br>
+
+                    <div>
                         <label>Photo de profil</label>
-                        <input type="file" name="photo" accept="image/*"><br><br>
-                        
+                        <input type="file" name="photo" accept="image/*">
+
                         <label>Classe</label>
                         <input type="text" name="classe" required>
+
                         <label>Description</label>
-                        <input type="text" name="description"><br><br>
+                        <input type="text" name="description"><br>
+                    </div><br>
+
+                    <div>
                         <label>Passions</label>
                         <input type="text" name="passions">
+
                         <label>Projet</label>
                         <input type="text" name="projet">
-                        <input type="submit" value="ENVOYER">
-                    </form>
-                </section>
+                        <input type="submit" value="ENREGISTRER LE PROFIL">
+                    </div>
+                </form>
             </div>
         </div>
     </div>

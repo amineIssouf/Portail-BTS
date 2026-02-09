@@ -67,7 +67,7 @@ if (!$etudiant) {
 
     <div style="display: flex; gap: 10px; margin-top: 20px;">
         <form action="aceuille.php">
-          <button type="submit">Page d'Accueil</button>
+          <button type="submit">Retour à l'accueil</button>
         </form>
         <form action="../backoffice/ajouter_etudiant.php">
           <button type="submit">Ajouter un étudiant</button>
